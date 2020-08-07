@@ -1,5 +1,5 @@
 {
-  "name": "eslint-plugin-import",
+  "name": "@trigensoftware/eslint-plugin-import",
   "version": "2.22.0",
   "description": "Import with sanity.",
   "engines": {
