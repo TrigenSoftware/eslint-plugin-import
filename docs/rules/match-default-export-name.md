@@ -51,7 +51,7 @@ Properties of the objects
 | property  | required | type   | description   |
 |-----------|:--------:|--------|---------------|
 | module    |     x    | string | module name to match |
-| name      |     x    | string | default import name pattern |
+| name      |     x    | string or string[] | default import name pattern |
 | transform |          | string | transform default import name pattern to given case, can be 'camelCase', 'PascalCase' or 'snake_case' |
 
 ```json
