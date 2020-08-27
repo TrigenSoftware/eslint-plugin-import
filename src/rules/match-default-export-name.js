@@ -5,7 +5,7 @@ import Exports from '../ExportMap'
 import importDeclaration from '../importDeclaration'
 import docsUrl from '../docsUrl'
 
-function getDefaultExportName(declaration, context, matchIgnore) {
+function getDefaultExportNames(declaration, context, matchIgnore) {
   const imports = Exports.get(declaration.source.value, context)
 
   if (imports == null || matchIgnore(imports.path)) {
@@ -21,7 +21,9 @@ function getDefaultExportName(declaration, context, matchIgnore) {
     return null
   }
 
-  return imports.get('default').identifierName
+  const { identifierName } = imports.get('default')
+
+  return identifierName ? [identifierName] : null
 }
 
 function applyCaseTransform(value, transform) {
@@ -43,16 +45,17 @@ function stringToRegExp(string) {
     : null
 }
 
-function createCustomDefaultExportNameGetter(overrides) {
+function createCustomDefaultExportNamesGetter(overrides) {
   if (!Array.isArray(overrides)) {
     return () => null
   }
 
-  const getCustomDefaultExportName = overrides.reduce((prevGetter, {
+  const getCustomDefaultExportNames = overrides.reduce((prevGetter, {
     module,
     name,
     transform,
   }) => {
+    const names = Array.isArray(name) ? name : [name]
     const moduleRegExp = stringToRegExp(module)
     const exec = moduleRegExp
       ? (moduleQuery) => {
@@ -65,10 +68,10 @@ function createCustomDefaultExportNameGetter(overrides) {
       const results = exec(moduleQuery)
 
       if (results) {
-        return applyCaseTransform(
+        return names.map(name => applyCaseTransform(
           name.replace(/(?:^|[^\\])\$(\d+)/g, (_, index) => results[parseInt(index, 10) - 1]),
           transform
-        )
+        ))
       }
 
       return null
@@ -89,7 +92,7 @@ function createCustomDefaultExportNameGetter(overrides) {
     return getter
   }, null)
 
-  return declaration => getCustomDefaultExportName(declaration.source.value)
+  return declaration => getCustomDefaultExportNames(declaration.source.value)
 }
 
 function createIngoreMathcer(ignore) {
@@ -113,6 +116,25 @@ function createIngoreMathcer(ignore) {
 
     return matcher
   }, null)
+}
+
+function formatNameVariants(names) {
+  if (names.length <= 1) {
+    return `'${names[0]}'`
+  }
+
+  const lastIndex = names.length - 1
+
+  return names.reduce((nameVariants, name, i) => {
+    switch (i) {
+      case 0:
+        return `'${name}'`
+      case lastIndex:
+        return `${nameVariants} or '${name}'`
+      default:
+        return `${nameVariants}, '${name}'`
+    }
+  }, '')
 }
 
 module.exports = {
@@ -148,7 +170,10 @@ module.exports = {
                 name: {
                   description: 'default import name pattern '
                     + '(e. g. "React", "styles", "$1Styles")',
-                  type: 'string',
+                  anyOf: [
+                    { type: 'string' },
+                    { type: 'array', minItems: 1, items: { type: 'string' } },
+                  ],
                 },
                 transform: {
                   description: 'transform default import name pattern to given case',
@@ -168,7 +193,7 @@ module.exports = {
     const options = context.options[0] || {}
     const ignore = options.ignore || ['/node_modules/']
     const matchIgnore = createIngoreMathcer(ignore)
-    const getCustomDefaultExportName = createCustomDefaultExportNameGetter(options.overrides)
+    const getCustomDefaultExportNames = createCustomDefaultExportNamesGetter(options.overrides)
     const checkDefault = (nameKey, expected, defaultSpecifier) => {
       // #566: default is a valid specifier
       if (defaultSpecifier[nameKey].name === 'default') {
@@ -176,23 +201,17 @@ module.exports = {
       }
 
       const declaration = importDeclaration(context)
-      const customExportedName = getCustomDefaultExportName(declaration)
-      const exportedName = customExportedName
-        || getDefaultExportName(declaration, context, matchIgnore)
+      const customExportedNames = getCustomDefaultExportNames(declaration)
+      const exportedNames = customExportedNames
+        || getDefaultExportNames(declaration, context, matchIgnore)
 
-      if (exportedName) {
+      if (exportedNames && exportedNames.length) {
         const importedName = defaultSpecifier[nameKey].name
 
-        if (exportedName && exportedName !== importedName) {
+        if (exportedNames.indexOf(importedName) < 0) {
           context.report({
             node: defaultSpecifier,
-            message: 'Expected ' + expected + ' \'' + importedName +
-            (
-              customExportedName
-                ? '\' to match \''
-                : '\' to match the default export \''
-            ) + exportedName +
-            '\'.',
+            message: `Expected ${expected} '${importedName}' ${customExportedNames ? 'to match' : 'to match the default export'} ${formatNameVariants(exportedNames)}.`,
           })
         }
       }

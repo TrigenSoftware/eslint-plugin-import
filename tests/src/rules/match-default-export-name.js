@@ -86,6 +86,34 @@ ruleTester.run('match-default-export-name', rule, {
       ],
     }),
     test({
+      code: 'import someComponentStyles from "./match-default-export-name/some-component.module.css";',
+      options: [
+        {
+          overrides: [
+            {
+              module: '/([\\w-]+)\\.module\\.css$/',
+              name: ['$1Styles'],
+              transform: 'camelCase',
+            },
+          ],
+        },
+      ],
+    }),
+    test({
+      code: 'import styles from "./match-default-export-name/some-component.module.css";',
+      options: [
+        {
+          overrides: [
+            {
+              module: '/([\\w-]+)\\.module\\.css$/',
+              name: ['styles', '$1Styles'],
+              transform: 'camelCase',
+            },
+          ],
+        },
+      ],
+    }),
+    test({
       code: 'import id from "./match-default-export-name/id";',
       options: [
         {
@@ -233,6 +261,42 @@ ruleTester.run('match-default-export-name', rule, {
       ],
       errors: [{
         message: 'Expected import \'css\' to match \'someComponentStyles\'.',
+        type: 'ImportDefaultSpecifier',
+      }],
+    }),
+    test({
+      code: 'import css from "./match-default-export-name/some-component.module.css";',
+      options: [
+        {
+          overrides: [
+            {
+              module: '/([\\w-]+)\\.module\\.css$/',
+              name: ['$1Styles'],
+              transform: 'camelCase',
+            },
+          ],
+        },
+      ],
+      errors: [{
+        message: 'Expected import \'css\' to match \'someComponentStyles\'.',
+        type: 'ImportDefaultSpecifier',
+      }],
+    }),
+    test({
+      code: 'import css from "./match-default-export-name/some-component.module.css";',
+      options: [
+        {
+          overrides: [
+            {
+              module: '/([\\w-]+)\\.module\\.css$/',
+              name: ['styles', '$1Styles'],
+              transform: 'camelCase',
+            },
+          ],
+        },
+      ],
+      errors: [{
+        message: 'Expected import \'css\' to match \'styles\' or \'someComponentStyles\'.',
         type: 'ImportDefaultSpecifier',
       }],
     }),
