@@ -68,8 +68,8 @@ function createCustomDefaultExportNamesGetter(overrides) {
       const results = exec(moduleQuery)
 
       if (results) {
-        return names.map(name => applyCaseTransform(
-          name.replace(/(?:^|[^\\])\$(\d+)/g, (_, index) => results[parseInt(index, 10) - 1]),
+        return names.map(_ => applyCaseTransform(
+          _.replace(/(?:^|[^\\])\$(\d+)/g, (__, index) => results[parseInt(index, 10) - 1]),
           transform
         ))
       }
@@ -211,7 +211,9 @@ module.exports = {
         if (exportedNames.indexOf(importedName) < 0) {
           context.report({
             node: defaultSpecifier,
-            message: `Expected ${expected} '${importedName}' ${customExportedNames ? 'to match' : 'to match the default export'} ${formatNameVariants(exportedNames)}.`,
+            message: `Expected ${expected} '${importedName}' ${
+              customExportedNames ? 'to match' : 'to match the default export'
+            } ${formatNameVariants(exportedNames)}.`,
           })
         }
       }
